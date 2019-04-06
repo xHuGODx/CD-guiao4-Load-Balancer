@@ -7,23 +7,41 @@ import select
 # configure logger output format
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',datefmt='%m-%d %H:%M:%S')
 
-sockets = []
-socket_pairs = {}
+class SocketMapper:
+    def __init__(self):
+        self.map = {}
 
+    def add(self, client_sock, upstream_server=('127.0.0.1', 5000)):
+        upstream_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        upstream_sock.connect(upstream_server)
+        self.map[client_sock] =  upstream_sock
 
-def remote_conn():
-    try:
-        remote_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        remote_sock.connect(('127.0.0.1', 5000))
-        return remote_sock
-    except Exception as e:
-        return None 
+    def delete(self, sock):
+        try:
+            if sock in self.map:
+                self.map[sock].close()
+                del self.map[sock]
+                sock.close() 
+        except KeyError:
+            pass
+
+    def get_sock(self, sock):
+        for c, u in self.map.items():
+            if u == sock:
+                return c
+            if c == sock:
+                return u
+        return None
+
+    def get_all_socks(self):
+        return list(self.map.keys()) + list(self.map.values())
 
 def main(addr, servers):
     # create a logger
     logger = logging.getLogger('Load Balancer')
-    global sockets
 
+    mapper = SocketMapper()
+    
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -31,49 +49,22 @@ def main(addr, servers):
         sock.setblocking(False)
         sock.bind(addr)
         sock.listen(3)
-        sockets.append(sock)
         logger.debug('Listening on {0} {1}'.format(*addr))
         while True:
-            readable, writable, exceptional = select.select(sockets, [], [])
+            readable, writable, exceptional = select.select([sock]+mapper.get_all_socks(), [], [])
             for s in readable:
                 if s == sock:
                     client, addr = sock.accept()
                     logger.debug('Accepted connection {0} {1}'.format(*addr))
                     client.setblocking(False)
-                    sockets.append(client)
-                    socket_pairs[client] = remote_conn()
-                    sockets.append(socket_pairs[client])
-                if s in socket_pairs:
-                    logger.debug('Client data')
-                    while True:
-                        data = s.recv(4096)
-                        if len(data) == 0:
-                            sockets.remove(socket_pairs[s])
-                            socket_pairs[s].close()
-                            sockets.remove(s)
-                            s.close()
-                        if not data:
-                            break
-                        print(data)
-                        if s in socket_pairs:
-                            socket_pairs[s].send(data)
-                            break
-                else:
-                    for c, upstream in socket_pairs.items():
-                        if s == upstream:
-                            logger.debug("Upstream data")
-                            while True:
-                                try:
-                                    data = s.recv(4096)
-                                    print(len(data))
-                                    if not data:
-                                        break
-                                    print(data)
-                                    c.send(data)
-                                    break
-                                except Exception:
-                                    # Socket already closed
-                                    break
+                    mapper.add(client) #Falta upstream server
+                if mapper.get_sock(s):
+                    data = s.recv(4096)
+                    if len(data) == 0:
+                        logger.debug("closing session %s", s)
+                        mapper.delete(s)
+                        continue
+                    mapper.get_sock(s).send(data)
     except Exception as err:
         logger.error(err)
 
