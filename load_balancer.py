@@ -21,6 +21,10 @@ class Policy(ABC):
     def select_server(self):
         pass
 
+    @abstractmethod
+    def update(*arg):
+        pass
+
 
 # n to 1 policy
 class N2One(Policy):
@@ -30,6 +34,9 @@ class N2One(Policy):
     def select_server(self):
         return self.servers[0]
 
+    def update(*arg):
+        return
+
 
 # round robin policy
 class RoundRobin(Policy):
@@ -37,6 +44,9 @@ class RoundRobin(Policy):
         super(RoundRobin, self).__init__(servers)
 
     def select_server(self):
+        pass
+
+    def update(*arg):
         pass
 
 
@@ -48,6 +58,9 @@ class LeastConnections(Policy):
     def select_server(self):
         pass
 
+    def update(*arg):
+        pass
+
 
 # least response time
 class LeastResponseTime(Policy):
@@ -57,9 +70,13 @@ class LeastResponseTime(Policy):
     def select_server(self):
         pass
 
+    def update(*arg):
+        pass
+
 
 class SocketMapper:
-    def __init__(self):
+    def __init__(self, policy):
+        self.policy = policy
         self.map = {}
 
     def add(self, client_sock, upstream_server):
@@ -89,8 +106,8 @@ class SocketMapper:
 
 
 def main(addr, servers):
-    mapper = SocketMapper()
     policy = N2One(servers)
+    mapper = SocketMapper(policy)
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
