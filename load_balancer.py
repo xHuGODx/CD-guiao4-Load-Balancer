@@ -2,46 +2,42 @@
 
 import socket
 import select
+import signal
 import logging
 import argparse
-from abc import ABC, abstractmethod
-
 
 # configure logger output format
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',datefmt='%m-%d %H:%M:%S')
 logger = logging.getLogger('Load Balancer')
 
-# abstract class that implements the policy for selection one of the servers
-class Policy(ABC):
-    def __init__(self, servers):
-        self.servers = servers
-        super(Policy, self).__init__()
-    
-    @abstractmethod
-    def select_server(self):
-        pass
 
-    @abstractmethod
-    def update(*arg):
-        pass
+# used to stop the infinity loop
+done = False
+
+
+# implements a graceful shutdown
+def graceful_shutdown(signalNumber, frame):  
+    logger.debug('Graceful Shutdown...')
+    global done
+    done = True
 
 
 # n to 1 policy
-class N2One(Policy):
+class N2One:
     def __init__(self, servers):
-        super(N2One, self).__init__(servers)
+        self.servers = servers  
 
     def select_server(self):
         return self.servers[0]
 
     def update(*arg):
-        return
+        pass
 
 
 # round robin policy
-class RoundRobin(Policy):
+class RoundRobin:
     def __init__(self, servers):
-        super(RoundRobin, self).__init__(servers)
+        self.servers = servers
 
     def select_server(self):
         pass
@@ -51,9 +47,9 @@ class RoundRobin(Policy):
 
 
 # least connections policy
-class LeastConnections(Policy):
+class LeastConnections:
     def __init__(self, servers):
-        super(LeastConnections, self).__init__(servers)
+        self.servers = servers
 
     def select_server(self):
         pass
@@ -63,9 +59,9 @@ class LeastConnections(Policy):
 
 
 # least response time
-class LeastResponseTime(Policy):
+class LeastResponseTime:
     def __init__(self, servers):
-        super(LeastResponseTime, self).__init__(servers)
+        self.servers = servers
 
     def select_server(self):
         pass
@@ -106,6 +102,10 @@ class SocketMapper:
 
 
 def main(addr, servers):
+    # register handler for interruption 
+    # it stops the infinite loop gracefully
+    signal.signal(signal.SIGINT, graceful_shutdown)
+
     policy = N2One(servers)
     mapper = SocketMapper(policy)
 
@@ -117,20 +117,21 @@ def main(addr, servers):
         sock.bind(addr)
         sock.listen()
         logger.debug("Listening on %s %s", *addr)
-        while True:
-            readable, writable, exceptional = select.select([sock]+mapper.get_all_socks(), [], [])
-            for s in readable:
-                if s == sock:
-                    client, addr = sock.accept()
-                    logger.debug("Accepted connection %s %s", *addr)
-                    client.setblocking(False)
-                    mapper.add(client, policy.select_server())
-                if mapper.get_sock(s):
-                    data = s.recv(4096)
-                    if len(data) == 0: # No messages in socket, we can close down the socket
-                        mapper.delete(s)
-                    else:
-                        mapper.get_sock(s).send(data)
+        while not done:
+            readable, writable, exceptional = select.select([sock]+mapper.get_all_socks(), [], [], 1)
+            if readable is not None:
+                for s in readable:
+                    if s == sock:
+                        client, addr = sock.accept()
+                        logger.debug("Accepted connection %s %s", *addr)
+                        client.setblocking(False)
+                        mapper.add(client, policy.select_server())
+                    if mapper.get_sock(s):
+                        data = s.recv(4096)
+                        if len(data) == 0: # No messages in socket, we can close down the socket
+                            mapper.delete(s)
+                        else:
+                            mapper.get_sock(s).send(data)
     except Exception as err:
         logger.error(err)
 
