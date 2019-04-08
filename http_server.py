@@ -1,16 +1,18 @@
 # coding: utf-8
 
 import argparse
+from threading import Lock
 from utils import leibniz_pi_precision
 from flask import Flask
 from flask import render_template
 app = Flask(__name__)
- 
+lock = Lock() 
 
 @app.route("/<int:precision>")
 def index(precision):
-    calc = {'precision': precision, 'pi': leibniz_pi_precision(precision)}
-    return render_template('index.html', calc=calc)
+    with lock:
+        calc = {'precision': precision, 'pi': leibniz_pi_precision(precision)}
+        return render_template('index.html', calc=calc)
 
 
 if __name__ == "__main__":
