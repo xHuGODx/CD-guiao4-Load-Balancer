@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import argparse
-import threading
+from threading import Lock
 from utils import leibniz_pi_precision
 from flask import Flask
 from flask import render_template
@@ -9,15 +9,14 @@ from nocache import nocache
 
 
 app = Flask(__name__)
-sem = threading.Semaphore()
+lock = Lock() 
 
 
 @app.route("/<int:precision>")
 def index(precision):
-    sem.acquire()
-    calc = {'precision': precision, 'pi': leibniz_pi_precision(precision)}
-    sem.release()
-    return render_template('index.html', calc=calc)
+    with lock:
+        calc = {'precision': precision, 'pi': leibniz_pi_precision(precision)}
+        return render_template('index.html', calc=calc)
 
 
 if __name__ == "__main__":
