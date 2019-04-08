@@ -30,7 +30,7 @@ class N2One:
     def select_server(self):
         return self.servers[0]
 
-    def update(*arg):
+    def update(self, *arg):
         pass
 
 
@@ -42,7 +42,7 @@ class RoundRobin:
     def select_server(self):
         pass
 
-    def update(*arg):
+    def update(self, *arg):
         pass
 
 
@@ -54,7 +54,7 @@ class LeastConnections:
     def select_server(self):
         pass
 
-    def update(*arg):
+    def update(self, *arg):
         pass
 
 
@@ -66,7 +66,7 @@ class LeastResponseTime:
     def select_server(self):
         pass
 
-    def update(*arg):
+    def update(self, *arg):
         pass
 
 
