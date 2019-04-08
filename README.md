@@ -42,6 +42,15 @@ The number after the URL specifies the precision of the computation.
 $ ./stress_test.sh
 ```
 
+## Git Upstream
+
+```console
+$ git remote add upstream git@github.com:mariolpantunes/restaurant-p2p.git
+$ git fetch upstream
+$ git checkout master
+$ git merge upstream/master
+```
+
 ## Authors
 
 * **Mário Antunes** - [mariolpantunes](https://github.com/mariolpantunes)
