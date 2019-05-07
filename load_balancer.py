@@ -41,7 +41,7 @@ class RoundRobin:
 
     def select_server(self):
         pass
-
+    
     def update(self, *arg):
         pass
 
@@ -92,6 +92,12 @@ class SocketMapper:
         for c, u in self.map.items():
             if u == sock:
                 return c
+            if c == sock:
+                return u
+        return None
+    
+    def get_upstream_sock(self, sock):
+        for c, u in self.map.items():
             if c == sock:
                 return u
         return None
