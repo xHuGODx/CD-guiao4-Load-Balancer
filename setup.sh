@@ -19,7 +19,14 @@ do
   echo -e "\tStart HTTP Server localhost:$PORT ($PID)"
 done
 
+
+echo $SERVERS > servers.txt
+
+echo "Press any key to start"
+read 
+
 echo -e Start Load Balancer: $SERVERS
+
 python3 load_balancer.py -p 8080 -s $SERVERS
 
 echo -e Stop $N_SERVERS Http Servers
