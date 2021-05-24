@@ -28,8 +28,8 @@ jobs:
         # Only runs if all of the files exists
         run: grep -E '[0-9]{5}.?-[0-9]{5}.?' NMEC.txt
 
-  unit_tests:
-    name: Unit Tests
+  bash_tests:
+    name: Bash Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -47,23 +47,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          chmod +x *.sh
 
       - name: Launch servers into background
         run: |
-          setup.sh > /dev/null &
+          bash ./setup.sh > load_balancer.txt &
 
       - name: stress test on standby
         run: |
-          sleep 5 && stress_test.sh > tests.txt &
+          bash ./stress_test.sh
 
-      - name: Test with pytest
-        timeout-minutes: 2
-        run: |
-          python3 load_balancer.py -p 8080 -s `cat servers.txt`
-
-      - name: DHT Logs
+      - name: load_balancer Logs
         uses: actions/upload-artifact@v2
         with:
-          name: Stress Tests logs
-          path: tests.txt
+          name: load_balancer logs
+          path: load_balancer.txt
           retention-days: 1
+

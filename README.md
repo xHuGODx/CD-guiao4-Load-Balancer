@@ -6,8 +6,8 @@ The code contains 4 classes that implement different strategies to select the ne
 
 1. **N to 1:** all the requests are routed to a single server
 2. **Round Robin:** the requests are routed to all servers in sequence
-3. **Least Connections:** the request are routed to the server with fewer processed connections
-4. **Least Response Time:** the request are routed to the server with less execution time
+3. **Least Connections:** the request is routed to the server with fewer processed connections
+4. **Least Response Time:** the request is routed to the server with less average execution time
 
 At the moment only the fist strategy is fully implemented.
 
@@ -31,10 +31,16 @@ $ source venv/bin/activate
 $ ./setup.sh
 ```
 
-Alternative
+Noutro terminal
 ```console
-$ httperf --server=localhost --port=8080 --uri=/100 --num-conns=100
+$ curl -s http://localhost:8080/10
 ```
+
+Ou abrir num browser
+```console
+http://localhost:8080/10
+```
+
 
 ## How to access the load balancer
 
@@ -45,6 +51,11 @@ The number after the URL specifies the precision of the computation.
 
 ```console
 $ ./stress_test.sh
+```
+
+Alternative
+```console
+$ httperf --server=localhost --port=8080 --uri=/100 --num-conns=100
 ```
 
 ## Git Upstream
