@@ -31,6 +31,11 @@ $ source venv/bin/activate
 $ ./setup.sh
 ```
 
+Alternative
+```console
+$ httperf --server=localhost --port=8080 --uri=/100 --num-conns=100
+```
+
 ## How to access the load balancer
 
 Go to a browser and open this [link](http://localhost:8080/100).

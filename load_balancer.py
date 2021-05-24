@@ -98,18 +98,15 @@ class SocketMapper:
             pass
 
     def get_sock(self, sock):
-        for c, u in self.map.items():
-            if u == sock:
-                return c
-            if c == sock:
-                return u
+        for client, upstream in self.map.items():
+            if upstream == sock:
+                return client
+            if client == sock:
+                return upstream
         return None
     
     def get_upstream_sock(self, sock):
-        for c, u in self.map.items():
-            if c == sock:
-                return u
-        return None
+        return self.map.get(sock)
 
     def get_all_socks(self):
         """ Flatten all sockets into a list"""
@@ -163,8 +160,6 @@ if __name__ == '__main__':
     parser.add_argument('-s', dest='servers', nargs='+', type=int, help='list of servers ports')
     args = parser.parse_args()
     
-    servers = []
-    for p in args.servers:
-        servers.append(('localhost', p))
+    servers = [('localhost', p) for p in args.servers]
     
     main(('127.0.0.1', args.port), servers)
