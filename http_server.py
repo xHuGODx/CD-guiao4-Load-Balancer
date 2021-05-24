@@ -5,7 +5,6 @@ from threading import Lock
 from utils import leibniz_pi_precision
 from flask import Flask
 from flask import render_template
-from nocache import nocache
 
 
 app = Flask(__name__)

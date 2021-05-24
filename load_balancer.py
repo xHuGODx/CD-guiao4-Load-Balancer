@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import socket
-import select
+import selectors
 import signal
 import logging
 import argparse
@@ -14,6 +14,10 @@ logger = logging.getLogger('Load Balancer')
 # used to stop the infinity loop
 done = False
 
+sel = selectors.DefaultSelector()
+
+policy = None
+mapper = None
 
 # implements a graceful shutdown
 def graceful_shutdown(signalNumber, frame):  
@@ -76,14 +80,19 @@ class SocketMapper:
         self.map = {}
 
     def add(self, client_sock, upstream_server):
+        client_sock.setblocking(False)
+        sel.register(client_sock, selectors.EVENT_READ, read)
         upstream_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         upstream_sock.connect(upstream_server)
+        upstream_sock.setblocking(False)
+        sel.register(upstream_sock, selectors.EVENT_READ, read)
         logger.debug("Proxying to %s %s", *upstream_server)
         self.map[client_sock] =  upstream_sock
 
     def delete(self, sock):
         try:
             self.map.pop(sock)
+            sel.unregister(sock)
             sock.close() 
         except KeyError:
             pass
@@ -106,8 +115,23 @@ class SocketMapper:
         """ Flatten all sockets into a list"""
         return list(sum(self.map.items(), ())) 
 
+def accept(sock, mask):
+    client, addr = sock.accept()
+    logger.debug("Accepted connection %s %s", *addr)
+    mapper.add(client, policy.select_server())
+
+def read(conn,mask):
+    data = conn.recv(4096)
+    if len(data) == 0: # No messages in socket, we can close down the socket
+        mapper.delete(conn)
+    else:
+        mapper.get_sock(conn).send(data)
+
 
 def main(addr, servers):
+    global policy
+    global mapper
+
     # register handler for interruption 
     # it stops the infinite loop gracefully
     signal.signal(signal.SIGINT, graceful_shutdown)
@@ -116,28 +140,20 @@ def main(addr, servers):
     mapper = SocketMapper(policy)
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(addr)
+    sock.listen()
+    sock.setblocking(False)
+
+    sel.register(sock, selectors.EVENT_READ, accept)
 
     try:
-        sock.setblocking(False)
-        sock.bind(addr)
-        sock.listen()
         logger.debug("Listening on %s %s", *addr)
         while not done:
-            readable, writable, exceptional = select.select([sock]+mapper.get_all_socks(), [], [], 1)
-            if readable is not None:
-                for s in readable:
-                    if s == sock:
-                        client, addr = sock.accept()
-                        logger.debug("Accepted connection %s %s", *addr)
-                        client.setblocking(False)
-                        mapper.add(client, policy.select_server())
-                    if mapper.get_sock(s):
-                        data = s.recv(4096)
-                        if len(data) == 0: # No messages in socket, we can close down the socket
-                            mapper.delete(s)
-                        else:
-                            mapper.get_sock(s).send(data)
+            events = sel.select()
+            for key, mask in events:
+                callback = key.data
+                callback(key.fileobj, mask)
+                
     except Exception as err:
         logger.error(err)
 
