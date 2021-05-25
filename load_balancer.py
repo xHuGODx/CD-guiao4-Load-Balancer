@@ -19,6 +19,7 @@ sel = selectors.DefaultSelector()
 policy = None
 mapper = None
 
+
 # implements a graceful shutdown
 def graceful_shutdown(signalNumber, frame):  
     logger.debug('Graceful Shutdown...')
@@ -74,6 +75,13 @@ class LeastResponseTime:
         pass
 
 
+POLICIES = {
+    "N2One": N2One,
+    "RoundRobin": RoundRobin,
+    "LeastConnections": LeastConnections,
+    "LeastResponseTime": LeastResponseTime
+}
+
 class SocketMapper:
     def __init__(self, policy):
         self.policy = policy
@@ -125,7 +133,7 @@ def read(conn,mask):
         mapper.get_sock(conn).send(data)
 
 
-def main(addr, servers):
+def main(addr, servers, policy_class):
     global policy
     global mapper
 
@@ -133,7 +141,7 @@ def main(addr, servers):
     # it stops the infinite loop gracefully
     signal.signal(signal.SIGINT, graceful_shutdown)
 
-    policy = N2One(servers)
+    policy = policy_class(servers)
     mapper = SocketMapper(policy)
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -156,10 +164,11 @@ def main(addr, servers):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Pi HTTP server')
+    parser.add_argument('-a', dest='policy', choices=POLICIES)
     parser.add_argument('-p', dest='port', type=int, help='load balancer port', default=8080)
     parser.add_argument('-s', dest='servers', nargs='+', type=int, help='list of servers ports')
     args = parser.parse_args()
     
     servers = [('localhost', p) for p in args.servers]
     
-    main(('127.0.0.1', args.port), servers)
+    main(('127.0.0.1', args.port), servers, POLICIES[args.policy])
