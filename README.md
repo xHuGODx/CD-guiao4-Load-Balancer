@@ -55,7 +55,7 @@ $ ./stress_test.sh
 
 Alternative
 ```console
-$ httperf --server=localhost --port=8080 --uri=/100 --num-conns=100
+$ httperf --server=localhost --port=8080 --uri=/100 --num-conns=100 --rate=5
 ```
 
 ## Git Upstream
