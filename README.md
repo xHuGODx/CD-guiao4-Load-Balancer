@@ -31,12 +31,12 @@ $ source venv/bin/activate
 $ ./setup.sh
 ```
 
-Noutro terminal
+In another terminal
 ```console
 $ curl -s http://localhost:8080/10
 ```
 
-Ou abrir num browser
+Or use a browser to open
 ```console
 http://localhost:8080/10
 ```
