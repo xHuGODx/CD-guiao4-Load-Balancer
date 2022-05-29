@@ -37,3 +37,5 @@ if [ "$FAIL" == "0" ]; then
 else 
   echo "FAIL! ($FAIL)" 
 fi
+
+exit $FAIL
