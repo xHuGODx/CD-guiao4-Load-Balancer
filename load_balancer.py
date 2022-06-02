@@ -159,8 +159,9 @@ def main(addr, servers, policy_class):
         while not done:
             events = sel.select(timeout=1)
             for key, mask in events:
-                callback = key.data
-                callback(key.fileobj, mask)
+                if(key.fileobj.fileno()>0):
+                    callback = key.data
+                    callback(key.fileobj, mask)
                 
     except Exception as err:
         logger.error(err)
