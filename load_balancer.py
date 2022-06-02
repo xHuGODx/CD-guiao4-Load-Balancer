@@ -98,10 +98,15 @@ class SocketMapper:
         self.map[client_sock] =  upstream_sock
 
     def delete(self, sock):
+        paired_sock = self.get_sock(sock)
         sel.unregister(sock)
         sock.close()
+        sel.unregister(paired_sock)
+        paired_sock.close()
         if sock in self.map:
             self.map.pop(sock)
+        else:
+            self.map.pop(paired_sock)
 
     def get_sock(self, sock):
         for client, upstream in self.map.items():
