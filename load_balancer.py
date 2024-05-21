@@ -5,6 +5,7 @@ import selectors
 import signal
 import logging
 import argparse
+import time
 
 # configure logger output format
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',datefmt='%m-%d %H:%M:%S')
@@ -39,14 +40,19 @@ class N2One:
         pass
 
 
-# round robin policy
 class RoundRobin:
     def __init__(self, servers):
         self.servers = servers
+        self.index = -1
 
     def select_server(self):
-        pass
-    
+        idx = (self.index + 1) % len(self.servers)
+        self.index = idx 
+
+        server = self.servers[idx]
+        
+        return server
+
     def update(self, *arg):
         pass
 
@@ -55,24 +61,50 @@ class RoundRobin:
 class LeastConnections:
     def __init__(self, servers):
         self.servers = servers
+        self.d={}
+        for server in self.servers:
+            self.d[server]=0
 
     def select_server(self):
-        pass
+        min=self.servers[0]
+        for server in self.d:
+            if self.d[server]<self.d[min]:
+                min=server
+        self.d[min]+=1
+        return min
 
     def update(self, *arg):
-        pass
+        self.d[arg[0]]-=1
 
 
 # least response time
 class LeastResponseTime:
     def __init__(self, servers):
         self.servers = servers
+        self.avg={}
+        self.d={}
+        self.historic={}
+        for s in self.servers:
+            self.avg[s]=0
+            self.d[s]=0
+            self.historic[s]=[]
 
     def select_server(self):
-        pass
+        t = time.time()
+        for s in self.servers:
+            self.avg[s]=(sum(self.historic[s])+self.d[s]-t)/(len(self.historic[s])+1)
+        
+        mn=min([v for v in self.avg.values()])
+        server=[s for s in self.servers if self.avg[s]==mn][0]
+        self.d[server]=time.time()
+
+        return server
+
 
     def update(self, *arg):
-        pass
+        self.historic[arg[0]].append(time.time()-self.d[arg[0]])
+        self.avg[arg[0]]=sum(self.historic[arg[0]])/len(self.historic[arg[0]])
+
 
 
 POLICIES = {
