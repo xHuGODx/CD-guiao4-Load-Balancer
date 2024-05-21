@@ -46,10 +46,11 @@ class RoundRobin:
         self.index = -1
 
     def select_server(self):
-        idx = (self.index + 1) % len(self.servers)
-        self.index = idx 
+        self.index = self.index + 1
+        if self.index >= len(self.servers):
+            self.index = 0
 
-        server = self.servers[idx]
+        server = self.servers[self.index]
         
         return server
 
@@ -61,49 +62,45 @@ class RoundRobin:
 class LeastConnections:
     def __init__(self, servers):
         self.servers = servers
-        self.d={}
+        self.connections={}
         for server in self.servers:
-            self.d[server]=0
+            self.connections[server]=0
 
     def select_server(self):
         min=self.servers[0]
-        for server in self.d:
-            if self.d[server]<self.d[min]:
+        for server , numConnections in self.connections.items():
+            if numConnections < self.connections[min]:
                 min=server
-        self.d[min]+=1
+        self.connections[min]+=1
         return min
 
     def update(self, *arg):
-        self.d[arg[0]]-=1
+        self.connections[arg[0]]-=1
 
 
 # least response time
 class LeastResponseTime:
     def __init__(self, servers):
         self.servers = servers
-        self.avg={}
-        self.d={}
-        self.historic={}
-        for s in self.servers:
-            self.avg[s]=0
-            self.d[s]=0
-            self.historic[s]=[]
+        self.averageRT = {server: 0 for server in servers}
+        self.connections = {server: 0 for server in servers}
+        self.RThistory = {server: [] for server in servers}
 
     def select_server(self):
         t = time.time()
-        for s in self.servers:
-            self.avg[s]=(sum(self.historic[s])+self.d[s]-t)/(len(self.historic[s])+1)
+        for server in self.servers:
+            self.averageRT[server]=(sum(self.RThistory[server])+self.connections[server]-t)/(len(self.RThistory[server])+1)
         
-        mn=min([v for v in self.avg.values()])
-        server=[s for s in self.servers if self.avg[s]==mn][0]
-        self.d[server]=time.time()
+        leastRT=min([v for v in self.averageRT.values()])
+        server=[s for s in self.servers if self.averageRT[s]==leastRT][0]
+        self.connections[server]=time.time()
 
         return server
 
 
     def update(self, *arg):
-        self.historic[arg[0]].append(time.time()-self.d[arg[0]])
-        self.avg[arg[0]]=sum(self.historic[arg[0]])/len(self.historic[arg[0]])
+        self.RThistory[arg[0]].append(time.time()-self.connections[arg[0]])
+        self.averageRT[arg[0]]=sum(self.RThistory[arg[0]])/len(self.RThistory[arg[0]])
 
 
 
