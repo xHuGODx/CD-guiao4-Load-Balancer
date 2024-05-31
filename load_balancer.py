@@ -82,25 +82,32 @@ class LeastConnections:
 class LeastResponseTime:
     def __init__(self, servers):
         self.servers = servers
-        self.averageRT = {server: 0 for server in servers}
-        self.connections = {server: 0 for server in servers}
-        self.RThistory = {server: [] for server in servers}
+        self.RT = {server: [[0], 0, 0] for server in self.servers}         
 
     def select_server(self):
-        t = time.time()
-        for server in self.servers:
-            self.averageRT[server]=(sum(self.RThistory[server])+self.connections[server]-t)/(len(self.RThistory[server])+1)
-        
-        leastRT=min([v for v in self.averageRT.values()])
-        server=[s for s in self.servers if self.averageRT[s]==leastRT][0]
-        self.connections[server]=time.time()
+        server = min(self.RT, key=lambda key: self.RT[key][1])
+        temp = [item for item in self.RT.items() if item[1][1] == self.RT[server][1]]
+    
+        if len(temp) > 1:
+            server = min(temp, key=lambda item: len(item[1][0]))[0]
+    
 
+        self.RT[server][0].append(time.time())
+    
         return server
 
-
-    def update(self, *arg):
-        self.RThistory[arg[0]].append(time.time()-self.connections[arg[0]])
-        self.averageRT[arg[0]]=sum(self.RThistory[arg[0]])/len(self.RThistory[arg[0]])
+    def update(self, server):
+        print("Updating server =", server)
+        serverInfo = self.RT[server]
+        startTime = serverInfo[0][0]
+        currentTime = time.time()
+        elapsedTIme = currentTime - startTime
+    
+        avgRT = (serverInfo[1] * serverInfo[2] + elapsedTIme) / (serverInfo[2] + 1)
+        serverInfo[1] = avgRT
+    
+        serverInfo[2] += 1
+        serverInfo[0] = serverInfo[0][1:] + [0]
 
 
 
